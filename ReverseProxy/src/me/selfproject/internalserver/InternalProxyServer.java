@@ -10,6 +10,8 @@ import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.nio.charset.Charset;
 import java.util.Arrays;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import me.selfproject.constants.CommonConstants;
 
@@ -41,6 +43,48 @@ public class InternalProxyServer {
 			
 			return false;
 	}
+	private boolean checkContentLength(byte[] content){
+		
+		try {
+			String tmpString = new String(content,"UTF-8");
+			
+			System.out.println("content----"+tmpString);
+			
+			Pattern pattern = Pattern.compile("(?<=Content-Length: )\\d+");
+			
+			Matcher ma = pattern.matcher(tmpString);
+			
+			if(ma.find()){
+				
+				int contentLength = Integer.valueOf(ma.group());
+				
+				Pattern messageBodyReg = Pattern.compile("(?<=\r\n\r\n)(.*[\r\n]{1,2})*");
+				
+				Matcher ma_ = messageBodyReg.matcher(tmpString);
+				
+				if(ma_.find()){
+					
+					String messageBody = ma_.group();
+					System.out.println(messageBody);
+					System.out.println("content-length : " + contentLength+";actual size:"+messageBody.length());
+					if(messageBody.length() == content.length){
+						return true;
+					}
+				}
+			
+			}else{
+				if(tmpString.endsWith("\r\n\r\n")){
+					return true;
+				}
+			}
+			
+		} catch (UnsupportedEncodingException e) {
+			
+		}
+		return false;
+		
+		
+	}
 	private String reaData(InputStream in) throws Exception{
 		
 		
@@ -70,7 +114,12 @@ public class InternalProxyServer {
 			}
 			if(data==null){
 				endOfRequest = false;
+			}else{
+				if(checkContentLength(data)){
+					endOfRequest = true;
+				}
 			}
+		
 			
 		}
 		return new String(data,"UTF-8");
@@ -134,6 +183,7 @@ public class InternalProxyServer {
 	public static void main(String[] args) {
 		
 		new InternalProxyServer("localhost", 80).run();
+		
 
 	}
 

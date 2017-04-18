@@ -10,6 +10,8 @@ import java.net.Socket;
 import java.nio.charset.Charset;
 import java.util.Arrays;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import me.selfproject.constants.CommonConstants;
 
@@ -44,6 +46,48 @@ public class ProxyServerHandle implements Runnable {
 		return false;
 	}
 	
+	private boolean checkContentLength(byte[] content){
+		
+		try {
+			String tmpString = new String(content,"UTF-8");
+			
+			System.out.println("content----"+tmpString);
+			
+			Pattern pattern = Pattern.compile("(?<=Content-Length: )\\d+");
+			
+			Matcher ma = pattern.matcher(tmpString);
+			
+			if(ma.find()){
+				
+				int contentLength = Integer.valueOf(ma.group());
+				
+				Pattern messageBodyReg = Pattern.compile("(?<=\r\n\r\n)(.*[\r\n]{1,2})*");
+				
+				Matcher ma_ = messageBodyReg.matcher(tmpString);
+				
+				if(ma_.find()){
+					
+					String messageBody = ma_.group();
+//					System.out.println(messageBody);
+//					System.out.println("content-length : " + contentLength+";actual size:"+messageBody.length());
+					if(messageBody.length() == content.length){
+						return true;
+					}
+				}
+			
+			}else{
+				if(tmpString.endsWith("\r\n\r\n")){
+					return true;
+				}
+			}
+			
+		} catch (UnsupportedEncodingException e) {
+			
+		}
+		return false;
+		
+		
+	}
 	private String reaData(InputStream in) throws Exception{
 		
 		
@@ -73,7 +117,12 @@ public class ProxyServerHandle implements Runnable {
 			}
 			if(data==null){
 				endOfRequest = false;
+			}else{
+				if(checkContentLength(data)){
+					endOfRequest = true;
+				}
 			}
+			
 			
 		}
 		return new String(data,"UTF-8");
@@ -90,7 +139,7 @@ public class ProxyServerHandle implements Runnable {
 			while(true){
 					
 				String msg = reaData(bufferIn);
-				System.out.println("request msg:"+msg);
+//				System.out.println("request msg:"+msg);
 				if((msg).equals(CommonConstants.MSG_NEWCONN+CommonConstants.MSG_SPLIT)){
 					try {
 						socketPool.put(socket);
@@ -103,7 +152,7 @@ public class ProxyServerHandle implements Runnable {
 					bufferOut.flush();
 				}else{
 					
-					Socket socket_ = socketPool.poll();
+					Socket socket_ = socketPool.take();
 					if(socket_==null){
 						
 						bufferOut.write("proxy error\r\n".getBytes());
@@ -112,11 +161,15 @@ public class ProxyServerHandle implements Runnable {
 					}else{
 						OutputStream out = socket_.getOutputStream();
 						out.write(msg.getBytes(Charset.forName("UTF-8")));
-						out.write(CommonConstants.MSG_SPLIT.getBytes());
+//						out.write(CommonConstants.MSG_SPLIT.getBytes());
 						out.flush();
 						
 						BufferedInputStream in = new BufferedInputStream(socket_.getInputStream());
-						bufferOut.write(reaData(in).getBytes(Charset.forName("UTF-8")));
+						
+						String  responseData  = reaData(in);
+						System.out.println(responseData);
+						
+						bufferOut.write(responseData.getBytes(Charset.forName("UTF-8")));
 						bufferOut.flush();
 						socket.close();
 						socketPool.put(socket_);
