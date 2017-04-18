@@ -11,6 +11,7 @@ import java.nio.channels.SocketChannel;
 import java.util.Arrays;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 
 import me.selfproject.constants.CommonConstants;
@@ -19,6 +20,9 @@ public class ProxyServer {
 	
 	private String serverIP;
 	private int serverPort;
+	
+	private LinkedBlockingQueue<Socket> socketPool = new LinkedBlockingQueue<Socket>();
+	
 	
 	public ProxyServer(String serverIP , int serverPort){
 		
@@ -51,7 +55,7 @@ public class ProxyServer {
 		while(true){
 			try {
 				Socket socket = serverSocket.accept();
-				exe.submit(new ProxyServerHandle(socket));
+				exe.submit(new ProxyServerHandle(socket,socketPool));
 				
 			} catch (IOException e) {
 				// TODO Auto-generated catch block
@@ -67,7 +71,8 @@ public class ProxyServer {
 	
 
 	public static void main(String[] args) {
-		// TODO Auto-generated method stub
+		
+		new ProxyServer("localhost",80).run();;
 
 	}
 

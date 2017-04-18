@@ -5,7 +5,9 @@ import java.io.BufferedOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.UnsupportedEncodingException;
 import java.net.Socket;
+import java.nio.charset.Charset;
 import java.util.Arrays;
 import java.util.concurrent.LinkedBlockingQueue;
 
@@ -15,26 +17,45 @@ public class ProxyServerHandle implements Runnable {
 
 	private Socket socket;
 	
-	private LinkedBlockingQueue<Socket> socketPool = new LinkedBlockingQueue<Socket>();
+	private LinkedBlockingQueue<Socket> socketPool ;
 	
 	
-	public  ProxyServerHandle(Socket socket) {
+	public  ProxyServerHandle(Socket socket,LinkedBlockingQueue<Socket> socketPool) {
 		
 		this.socket = socket;
 		
+		this.socketPool = socketPool;
+		
 	}
 	
-	public void run() {
+	private boolean checkIsStreamEnd(byte[] by){
 		
-		try{
-			byte[] data = null;
+		byte[] tmpBuf = Arrays.copyOfRange(by, by.length-CommonConstants.MSG_SPLIT.length(), by.length);
+		
+		try {
+			if(CommonConstants.MSG_SPLIT.equals(new String(tmpBuf,"UTF-8"))){
+				return true;
+			}
+		} catch (UnsupportedEncodingException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+		return false;
+	}
+	
+	private String reaData(InputStream in) throws Exception{
+		
+		
+		byte[] data = null;
+		
+		boolean endOfRequest = false;
+		while(!endOfRequest){
 			
 			byte[] buffer = new byte[1024];
-			
-			
-			int dataLength = -1;
-			while((dataLength = new BufferedInputStream(socket.getInputStream()).read(buffer))!=-1){
-				
+			int dataLength = in.read(buffer);
+			if(dataLength!=-1){
+				//read data
 				if(data==null){
 					data = Arrays.copyOf(buffer, dataLength);
 				}else{
@@ -43,38 +64,67 @@ public class ProxyServerHandle implements Runnable {
 					System.arraycopy(buffer, 0, tmpBuf, data.length, dataLength);
 					data = tmpBuf;
 				}
-				
-				buffer = new byte[1024];
+				//detect the end of request
+				if(checkIsStreamEnd(data)){
+					endOfRequest = true;
+				}
+			}else{
+				endOfRequest = true;
+			}
+			if(data==null){
+				endOfRequest = false;
 			}
 			
-			String msg = new String(data,"UTF-8");
-			if(msg.equals(CommonConstants.MSG_NEWCONN)){
-				try {
-					socketPool.put(socket);
-				} catch (InterruptedException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
+		}
+		return new String(data,"UTF-8");
+	}
+	
+	public void run() {
+		
+		try{
+			System.out.println("new socket connection...");
+			BufferedInputStream bufferIn = new BufferedInputStream(socket.getInputStream());
+			BufferedOutputStream bufferOut = new BufferedOutputStream(socket.getOutputStream());
+			
+			//the socket never active closed
+			while(true){
+					
+				String msg = reaData(bufferIn);
+				System.out.println("request msg:"+msg);
+				if((msg).equals(CommonConstants.MSG_NEWCONN+CommonConstants.MSG_SPLIT)){
+					try {
+						socketPool.put(socket);
+					} catch (InterruptedException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+					bufferOut.write(new String(CommonConstants.MSG_OK).getBytes());
+					bufferOut.write(CommonConstants.MSG_SPLIT.getBytes());
+					bufferOut.flush();
+				}else{
+					
+					Socket socket_ = socketPool.poll();
+					if(socket_==null){
+						
+						bufferOut.write("proxy error\r\n".getBytes());
+						socket.close();
+						
+					}else{
+						OutputStream out = socket_.getOutputStream();
+						out.write(msg.getBytes(Charset.forName("UTF-8")));
+						out.write(CommonConstants.MSG_SPLIT.getBytes());
+						out.flush();
+						
+						BufferedInputStream in = new BufferedInputStream(socket_.getInputStream());
+						bufferOut.write(reaData(in).getBytes(Charset.forName("UTF-8")));
+						bufferOut.flush();
+						socket.close();
+						socketPool.put(socket_);
+					}
+					
 				}
-				OutputStream out = socket.getOutputStream();
-				out.write(new String(CommonConstants.MSG_OK).getBytes());
-				
-			}else{
-				
-				Socket socket_ = socketPool.poll();
-				OutputStream out = socket_.getOutputStream();
-				out.write(data);
-				out.flush();
-				
-				BufferedInputStream in = new BufferedInputStream(socket_.getInputStream());
-				
-				byte[] buffer_ = new byte[1024];
-				int readingSize = -1;
-				while((readingSize = in.read(buffer_))!=-1){
-					new BufferedOutputStream(socket.getOutputStream()).write(buffer_, 0, readingSize);
-				}
-				socket.close();
-				socketPool.put(socket_);
 			}
+
 		} catch (Exception e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -85,7 +135,10 @@ public class ProxyServerHandle implements Runnable {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
+			return ;
 		}
+		
+		
 
 	}
 
