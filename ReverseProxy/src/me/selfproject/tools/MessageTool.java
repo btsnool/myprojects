@@ -41,18 +41,24 @@ public class MessageTool {
 				
 				int contentLength = Integer.valueOf(ma.group());
 				
-				Pattern messageBodyReg = Pattern.compile("(?<=\r\n\r\n)(.*[\r\n]{1,2})*");
-				
-				Matcher ma_ = messageBodyReg.matcher(tmpString);
-				
-				if(ma_.find()){
+//				Pattern messageBodyReg = Pattern.compile("(?<=\r\n\r\n)(.*[\r\n]{1,2})*");
+//				
+//				Matcher ma_ = messageBodyReg.matcher(tmpString);
+//				
+//				if(ma_.find()){
+//					
+//					String messageBody = ma_.group();
+//	//				System.out.println(messageBody);
+//					System.out.println("content-length : " + contentLength+";actual size:"+messageBody.length());
+//					if(messageBody.length() == contentLength || messageBody.length()+1 == contentLength){
+//						return true;
+//					}
+//				}
+				int messageBodyLength = getMessageBodyLength(content);
+				System.out.println("content-length : " + contentLength+";actual size:"+messageBodyLength);
+				if(contentLength == messageBodyLength){
+					return true;
 					
-					String messageBody = ma_.group();
-	//				System.out.println(messageBody);
-					System.out.println("content-length : " + contentLength+";actual size:"+messageBody.length());
-					if(messageBody.length() == contentLength || messageBody.length()+1 == contentLength){
-						return true;
-					}
 				}
 			
 			}else{
@@ -66,6 +72,39 @@ public class MessageTool {
 		}
 		return false;
 		
+		
+	}
+	
+	/**
+	 * 检查HTTP Message是否已经读取完全
+	 * @param content
+	 * @return
+	 */
+	private static int getMessageBodyLength(byte[] content){
+		
+		
+		int idx = 0 ; 
+		
+		boolean isFound = false;
+		
+		while(idx<content.length){
+			
+			if(content[idx]=='\r' && idx+3<content.length){
+				
+				if(content[idx+1] == '\n' && content[idx+2] == '\r' && content[idx+3] == '\n'){
+					
+					break;
+				}
+				
+			}
+			idx++;
+			
+		}
+		if(idx!=content.length){
+			
+			return content.length-idx-4;
+		}
+		return 0;
 		
 	}
 	
@@ -89,7 +128,7 @@ public class MessageTool {
 		boolean endOfRequest = false;
 		while(!endOfRequest){
 			
-			byte[] buffer = new byte[100];
+			byte[] buffer = new byte[1024*1024];
 			int dataLength = in.read(buffer);
 			if(dataLength!=-1){
 				//read data
@@ -118,7 +157,7 @@ public class MessageTool {
 		
 			
 		}
-		System.out.println("data size:"+data.length);
+//		System.out.println("data size:"+data.length);
 		return data;
 		
 	}
