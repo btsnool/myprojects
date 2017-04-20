@@ -12,6 +12,8 @@ import java.nio.charset.Charset;
 import java.text.SimpleDateFormat;
 import java.util.Arrays;
 import java.util.Date;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -22,8 +24,7 @@ public class InternalProxyServer {
 	
 	private String remoteServerIP;
 	private int remoteServerPort;
-	private final static int INIT_CONN_SIZE = 4;
-	
+	private final static int INIT_CONN_SIZE = 20;
 	
 	public InternalProxyServer(String remoteServerIP , int remoteServerPort){
 		
@@ -35,70 +36,22 @@ public class InternalProxyServer {
 	@SuppressWarnings("resource")
 	public void run(){
 		
-		Socket socket = new Socket();
+		ExecutorService exe = Executors.newFixedThreadPool(INIT_CONN_SIZE);
 		
-		try {
-			socket.connect(new InetSocketAddress(remoteServerIP, remoteServerPort));
-			BufferedOutputStream  bufferOut  = new BufferedOutputStream(socket.getOutputStream());
+		for(int i=0 ; i<INIT_CONN_SIZE ; i++){
 			
-			BufferedInputStream bufferIn = new BufferedInputStream(socket.getInputStream());
+			exe.submit(new InternalProxyServerHandle(remoteServerIP, remoteServerPort));
 			
-			bufferOut.write(CommonConstants.MSG_NEWCONN.getBytes());
-			bufferOut.write(CommonConstants.MSG_SPLIT.getBytes());
-			bufferOut.flush();
-			
-			while(true){
-				
-				byte[] data = MessageTool.readData(bufferIn);
-				
-				
-				log("request:\n"+new String(data));
-				
-				if((CommonConstants.MSG_OK+CommonConstants.MSG_SPLIT).equals(new String(data))){
-					
-					
-				}else{
-					
-					Socket redirectSocket = new Socket();
-					
-					redirectSocket.connect(new InetSocketAddress("183.134.5.17", 9080));
-					
-					BufferedOutputStream redirectOufferOut = new BufferedOutputStream(redirectSocket.getOutputStream());
-					redirectOufferOut.write(data);
-					redirectOufferOut.flush();
-					
-					BufferedInputStream redirectBufferIn_ = new BufferedInputStream(redirectSocket.getInputStream());
-					
-					byte[] response = MessageTool.readData(redirectBufferIn_);
-					
-					log("response :\n " + response);
-
-					bufferOut.write(response);
-					bufferOut.flush();
-					redirectSocket.close();
-					
-				}
-				
-				
-			}
-			
-			
-			
-		} catch (Exception e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
 		}
+		
 	}
 	
-	private void log(String msg){
-		
-		System.out.println(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date())+"-"+msg);
-		
-	}
+	
 
 	public static void main(String[] args) {
 		
-		new InternalProxyServer("localhost", 80).run();
+//		new InternalProxyServer("localhost", 80).run();
+		new InternalProxyServer("23.235.133.101", 80).run();
 		
 
 	}
