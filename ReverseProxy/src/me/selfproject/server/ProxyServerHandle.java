@@ -46,7 +46,7 @@ public class ProxyServerHandle implements Runnable {
 			byte[] msgData = MessageTool.readData(bufferIn);
 			String msg = new String(msgData);
 			
-			log("request:\n"+msg);
+			log("request-"+Thread.currentThread().getId()+":\n"+msg);
 			if((msg).equals(CommonConstants.MSG_NEWCONN+CommonConstants.MSG_SPLIT)){
 				try {
 					socketPool.put(socket);
@@ -75,7 +75,7 @@ public class ProxyServerHandle implements Runnable {
 					BufferedInputStream in = new BufferedInputStream(socket_.getInputStream());
 					
 					byte[]  responseData  = MessageTool.readData(in);
-					log("respone:\n"+responseData);
+					log("respone size-"+Thread.currentThread().getId()+":\n"+ responseData.length + "(Bytes)");
 					
 					bufferOut.write(responseData);
 					bufferOut.flush();

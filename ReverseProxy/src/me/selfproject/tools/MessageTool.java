@@ -41,21 +41,8 @@ public class MessageTool {
 				
 				int contentLength = Integer.valueOf(ma.group());
 				
-//				Pattern messageBodyReg = Pattern.compile("(?<=\r\n\r\n)(.*[\r\n]{1,2})*");
-//				
-//				Matcher ma_ = messageBodyReg.matcher(tmpString);
-//				
-//				if(ma_.find()){
-//					
-//					String messageBody = ma_.group();
-//	//				System.out.println(messageBody);
-//					System.out.println("content-length : " + contentLength+";actual size:"+messageBody.length());
-//					if(messageBody.length() == contentLength || messageBody.length()+1 == contentLength){
-//						return true;
-//					}
-//				}
 				int messageBodyLength = getMessageBodyLength(content);
-				System.out.println("content-length : " + contentLength+";actual size:"+messageBodyLength);
+//				System.out.println("content-length : " + contentLength+";actual size:"+messageBodyLength);
 				if(contentLength == messageBodyLength){
 					return true;
 					
@@ -84,8 +71,6 @@ public class MessageTool {
 		
 		
 		int idx = 0 ; 
-		
-		boolean isFound = false;
 		
 		while(idx<content.length){
 			
@@ -121,6 +106,7 @@ public class MessageTool {
 		
 	}
 	public  static  byte[] readData(InputStream in) throws Exception{
+		
 		
 		
 		byte[] data = null;

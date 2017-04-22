@@ -2,6 +2,7 @@ package me.selfproject.internalserver;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
+import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.text.SimpleDateFormat;
@@ -41,7 +42,7 @@ public class InternalProxyServerHandle implements Runnable {
 				byte[] data = MessageTool.readData(bufferIn);
 				
 				
-				log("request:\n"+new String(data));
+				log("request-"+Thread.currentThread().getId()+":\n"+new String(data));
 				
 				if((CommonConstants.MSG_OK+CommonConstants.MSG_SPLIT).equals(new String(data))){
 					
@@ -60,7 +61,7 @@ public class InternalProxyServerHandle implements Runnable {
 					
 					byte[] response = MessageTool.readData(redirectBufferIn_);
 					
-					log("response :\n " + response);
+					log("response size-"+Thread.currentThread().getId()+":\n " + response.length + "(Bytes)");
 
 					bufferOut.write(response);
 					bufferOut.flush();
@@ -74,8 +75,15 @@ public class InternalProxyServerHandle implements Runnable {
 			
 			
 		} catch (Exception e) {
-			// TODO Auto-generated catch block
+			
 			e.printStackTrace();
+			try {
+				socket.close();
+			} catch (IOException e1) {
+				// TODO Auto-generated catch block
+				e1.printStackTrace();
+			}
+			
 		}
 	}
 	

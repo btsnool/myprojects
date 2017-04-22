@@ -50,8 +50,8 @@ public class InternalProxyServer {
 
 	public static void main(String[] args) {
 		
-//		new InternalProxyServer("localhost", 80).run();
-		new InternalProxyServer("23.235.133.101", 80).run();
+		new InternalProxyServer("localhost", 80).run();
+//		new InternalProxyServer("23.235.133.101", 80).run();
 		
 
 	}

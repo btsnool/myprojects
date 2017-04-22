@@ -73,7 +73,8 @@ public class ProxyServer {
 	
 	public static void main(String[] args) {
 		
-		new ProxyServer("23.235.133.101",80).run();;
+//		new ProxyServer("23.235.133.101",80).run();;
+		new ProxyServer("localhost",80).run();
 
 	}
 
