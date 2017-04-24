@@ -11,12 +11,14 @@ import java.nio.channels.SocketChannel;
 import java.text.SimpleDateFormat;
 import java.util.Arrays;
 import java.util.Date;
+import java.util.Properties;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 
 import me.selfproject.constants.CommonConstants;
+import me.selfproject.internalserver.InternalProxyServer;
 
 public class ProxyServer {
 	
@@ -74,8 +76,23 @@ public class ProxyServer {
 	public static void main(String[] args) {
 		
 //		new ProxyServer("23.235.133.101",80).run();
-		new ProxyServer("localhost",80).run();
+//		new ProxyServer("localhost",80).run();
 
+		Properties prop = new Properties();
+		try {
+			prop.load(Thread.currentThread().getContextClassLoader().getResourceAsStream("conf.properties"));
+			System.out.println("system config:");
+			for(Object key : prop.keySet()){
+				
+				System.out.println(key+":"+prop.getProperty((String)key));
+				
+			}
+			new ProxyServer(prop.getProperty("remote.ip"),Integer.valueOf(prop.getProperty("remote.port"))).run();
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
 	}
 
 }
