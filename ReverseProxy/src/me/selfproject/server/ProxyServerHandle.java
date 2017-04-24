@@ -37,7 +37,7 @@ public class ProxyServerHandle implements Runnable {
 	public void run() {
 		
 		try{
-			System.out.println("new socket connection: threadid-"+Thread.currentThread().getId()+";"+socket);
+			log("new socket connection:"+socket);
 			BufferedInputStream bufferIn = new BufferedInputStream(socket.getInputStream());
 			
 			//read request data from the client
@@ -47,7 +47,7 @@ public class ProxyServerHandle implements Runnable {
 			int status = 0 ; 
 			
 			//listen and read the input data
-			while(!socket.isClosed()&&(status = bufferIn.read(inputBuffer))!=-1){
+			while((status = bufferIn.read(inputBuffer))!=-1){
 				
 				if(new String(inputBuffer).startsWith(CommonConstants.MSG_NEWCONN)){
 					log("inner proxy server init the connection..");
@@ -91,7 +91,7 @@ public class ProxyServerHandle implements Runnable {
 
 		} catch (Exception e) {
 			// TODO Auto-generated catch block
-			e.printStackTrace();
+			log(e.toString());
 			try {
 				if(socket!=null)
 					socket.close();
@@ -138,7 +138,7 @@ public class ProxyServerHandle implements Runnable {
 				while((status = bufferIn.read(outputBuffer))!=-1){
 					
 					if(new String(outputBuffer).startsWith(CommonConstants.MSG_CONNCLOSE)){
-						log("application server close the connection");
+						log("application server close the connection,"+"from thread-"+mainThreadID+",response size:"+responseSize+"(bytes)");
 						clientSocket.close();
 						try {
 							socketPool.put(serviceSocket);
@@ -184,7 +184,7 @@ public class ProxyServerHandle implements Runnable {
 	
 	private void log(String msg){
 		
-		System.out.println(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date())+"-"+msg);
+		System.out.println(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date())+"-"+Thread.currentThread().getId()+":"+msg);
 		
 	}
 

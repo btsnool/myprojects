@@ -59,7 +59,8 @@ public class InternalProxyServer {
 		
 //		new InternalProxyServer("183.134.5.17",9080,"localhost", 80).run();
 //		new InternalProxyServer("23.235.133.101", 80).run();
-		new InternalProxyServer("www.baidu.com",443,"localhost", 80).run();
+//		new InternalProxyServer("www.baidu.com",443,"localhost", 80).run();
+		new InternalProxyServer("23.235.133.101",22,"localhost", 80).run();
 		
 		
 

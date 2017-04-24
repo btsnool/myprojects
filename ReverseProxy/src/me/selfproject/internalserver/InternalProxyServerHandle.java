@@ -179,7 +179,7 @@ public class InternalProxyServerHandle implements Runnable {
 	}
 	private void log(String msg){
 		
-		System.out.println(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date())+"-"+msg);
+		System.out.println(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date())+"-"+Thread.currentThread().getId()+":"+msg);
 		
 	}
 
