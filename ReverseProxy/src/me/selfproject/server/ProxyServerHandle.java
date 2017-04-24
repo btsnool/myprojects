@@ -39,51 +39,55 @@ public class ProxyServerHandle implements Runnable {
 		try{
 			System.out.println("new socket connection: threadid-"+Thread.currentThread().getId()+";"+socket);
 			BufferedInputStream bufferIn = new BufferedInputStream(socket.getInputStream());
-			BufferedOutputStream bufferOut = new BufferedOutputStream(socket.getOutputStream());
 			
-			//the socket never active closed
-					
-			byte[] msgData = MessageTool.readData(bufferIn);
-			String msg = new String(msgData);
+			//read request data from the client
+			Socket redirectSocket =  null;
+			BufferedOutputStream redirectOufferOut = null;
+			byte[] inputBuffer = new byte[1024*10];
+			int status = 0 ; 
 			
-			log("request-"+Thread.currentThread().getId()+":\n"+msg);
-			if((msg).equals(CommonConstants.MSG_NEWCONN+CommonConstants.MSG_SPLIT)){
-				try {
-					socketPool.put(socket);
-				} catch (InterruptedException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				}
-				bufferOut.write(new String(CommonConstants.MSG_OK).getBytes());
-				bufferOut.write(CommonConstants.MSG_SPLIT.getBytes());
-				bufferOut.flush();
-			}else{
+			//listen and read the input data
+			while(!socket.isClosed()&&(status = bufferIn.read(inputBuffer))!=-1){
 				
-				Socket socket_ = socketPool.take();
-				if(socket_==null){
-					
-					bufferOut.write("proxy error\r\n".getBytes());
-					socket.close();
-					
+				if(new String(inputBuffer).startsWith(CommonConstants.MSG_NEWCONN)){
+					log("inner proxy server init the connection..");
+					try {
+						socketPool.put(socket);
+					} catch (InterruptedException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+					return;
+				}else if(new String(inputBuffer).startsWith(CommonConstants.MSG_CONNCLOSE)){
+					log("the application server close the connection..");
+					if(redirectSocket!=null){
+						socket.close();
+						socketPool.put(redirectSocket);
+					}
+					return;
 				}else{
-					log("redirect request to Socket: "+socket_.toString());
-					OutputStream out = socket_.getOutputStream();
-					out.write(msg.getBytes(Charset.forName("UTF-8")));
-//						out.write(CommonConstants.MSG_SPLIT.getBytes());
-					out.flush();
-					
-					BufferedInputStream in = new BufferedInputStream(socket_.getInputStream());
-					
-					byte[]  responseData  = MessageTool.readData(in);
-					log("respone size-"+Thread.currentThread().getId()+":\n"+ responseData.length + "(Bytes)");
-					
-					bufferOut.write(responseData);
-					bufferOut.flush();
-					socket.close();
-					socketPool.put(socket_);
+					//recevie the request from the client 
+					if(redirectSocket==null){
+						redirectSocket = socketPool.take();
+						redirectOufferOut = new BufferedOutputStream(redirectSocket.getOutputStream());
+						new Thread(new ResponseHandler(redirectSocket, socket, String.valueOf(Thread.currentThread().getId()))).start();
+					}
+					//write client request to the inner server
+					if(status!=inputBuffer.length){
+						byte[] tmpBuf = new byte[status];
+						System.arraycopy(inputBuffer, 0, tmpBuf, 0, status);
+						redirectOufferOut.write(tmpBuf);
+						log("request-"+Thread.currentThread().getId()+":"+new String(tmpBuf));
+					}else{
+						redirectOufferOut.write(inputBuffer);
+						log("request-"+Thread.currentThread().getId()+":"+new String(inputBuffer));
+					}
+					redirectOufferOut.flush();
 				}
 				
 			}
+			
+					
 
 		} catch (Exception e) {
 			// TODO Auto-generated catch block
@@ -100,6 +104,82 @@ public class ProxyServerHandle implements Runnable {
 		
 		
 
+	}
+	/**
+	 * 
+	 *Listen on the output stream 
+	 *
+	 */
+	final class ResponseHandler implements Runnable {
+		
+		private Socket serviceSocket ;
+		
+		private Socket clientSocket;
+		
+		private String mainThreadID ; 
+		
+		public ResponseHandler(Socket serviceSocket , Socket clientSocket , String mainThreadID){
+			
+			this.serviceSocket = serviceSocket;
+			this.clientSocket = clientSocket;
+			this.mainThreadID = mainThreadID;
+		}
+		
+		public void run() {
+			
+			try {
+				BufferedInputStream bufferIn = new BufferedInputStream(serviceSocket.getInputStream());
+				BufferedOutputStream bufferOut = new BufferedOutputStream(clientSocket.getOutputStream());
+				
+				//wait for the server close the connection
+				byte[] outputBuffer = new byte[1024*512];
+				int status = 0 ; 
+				int responseSize =0;
+				while((status = bufferIn.read(outputBuffer))!=-1){
+					
+					if(new String(outputBuffer).startsWith(CommonConstants.MSG_CONNCLOSE)){
+						log("application server close the connection");
+						clientSocket.close();
+						try {
+							socketPool.put(serviceSocket);
+						} catch (InterruptedException e) {
+							// TODO Auto-generated catch block
+							e.printStackTrace();
+						}
+						return;
+					}else{
+						if(status!=outputBuffer.length){
+							byte[] tmpBuf = new byte[status];
+							System.arraycopy(outputBuffer, 0, tmpBuf, 0, status);
+							bufferOut.write(tmpBuf);
+						}else{
+							bufferOut.write(outputBuffer);
+						}
+						responseSize+=status;
+					}
+					bufferOut.flush();
+					
+				}
+				
+				if(status==-1){
+					log("inner proxy server close the connection");
+					log("response size-"+mainThreadID+":\n " + responseSize + "(Bytes)");
+					serviceSocket.close();
+				}
+				
+			} catch (IOException e) {
+				log("exceptions occur , close the sockets , "+e.getMessage());
+				try {
+					clientSocket.close();
+				} catch (IOException e1) {
+					// TODO Auto-generated catch block
+					e1.printStackTrace();
+				}
+			}
+			
+			
+		}
+		
 	}
 	
 	private void log(String msg){

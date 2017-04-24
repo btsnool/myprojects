@@ -52,7 +52,7 @@ public class ProxyServer {
 			return ;
 		}
 		
-		ExecutorService exe = Executors.newFixedThreadPool(10);
+		ExecutorService exe = Executors.newFixedThreadPool(100);
 		
 		while(true){
 			try {
@@ -73,7 +73,7 @@ public class ProxyServer {
 	
 	public static void main(String[] args) {
 		
-//		new ProxyServer("23.235.133.101",80).run();;
+//		new ProxyServer("23.235.133.101",80).run();
 		new ProxyServer("localhost",80).run();
 
 	}

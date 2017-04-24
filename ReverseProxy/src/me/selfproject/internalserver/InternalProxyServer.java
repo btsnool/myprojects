@@ -24,12 +24,19 @@ public class InternalProxyServer {
 	
 	private String remoteServerIP;
 	private int remoteServerPort;
+	
+	private String localServerIP;
+	private int localServerPort;
+	
 	private final static int INIT_CONN_SIZE = 20;
 	
-	public InternalProxyServer(String remoteServerIP , int remoteServerPort){
+	public InternalProxyServer(String localServerIP , int localServerPort ,String remoteServerIP , int remoteServerPort){
 		
 		this.remoteServerIP = remoteServerIP;
 		this.remoteServerPort = remoteServerPort;
+		
+		this.localServerIP = localServerIP;
+		this.localServerPort = localServerPort;
 		
 	}
 	
@@ -40,7 +47,7 @@ public class InternalProxyServer {
 		
 		for(int i=0 ; i<INIT_CONN_SIZE ; i++){
 			
-			exe.submit(new InternalProxyServerHandle(remoteServerIP, remoteServerPort));
+			exe.submit(new InternalProxyServerHandle(localServerIP , localServerPort , remoteServerIP, remoteServerPort));
 			
 		}
 		
@@ -50,8 +57,10 @@ public class InternalProxyServer {
 
 	public static void main(String[] args) {
 		
-		new InternalProxyServer("localhost", 80).run();
+//		new InternalProxyServer("183.134.5.17",9080,"localhost", 80).run();
 //		new InternalProxyServer("23.235.133.101", 80).run();
+		new InternalProxyServer("www.baidu.com",443,"localhost", 80).run();
+		
 		
 
 	}
